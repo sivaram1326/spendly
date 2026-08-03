@@ -20,7 +20,7 @@
         </p>
         <div class="hero-actions">
             <a href="{{ url_for('register') }}" class="btn-primary">Create free account</a>
-            <a href="#" class="btn-primary">See how it works</a>
+            <a href="#" class="btn-primary" id="how-it-works-trigger">See how it works</a>
         </div>
     </div>
     <div class="hero-visual">
@@ -99,4 +99,59 @@
     </div>
 </section>
 
+<div class="modal-overlay" id="how-it-works-modal">
+    <div class="modal-box">
+        <button type="button" class="modal-close" id="how-it-works-close" aria-label="Close">&times;</button>
+        <div class="modal-video-wrap">
+            <iframe
+                id="how-it-works-iframe"
+                class="modal-video"
+                src=""
+                data-src="https://www.youtube.com/embed/M7lc1UVf-VE"
+                title="How Spendly works"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var trigger = document.getElementById('how-it-works-trigger');
+    var modal = document.getElementById('how-it-works-modal');
+    var closeBtn = document.getElementById('how-it-works-close');
+    var iframe = document.getElementById('how-it-works-iframe');
+    var videoSrc = iframe.getAttribute('data-src');
+
+    function openModal(event) {
+        event.preventDefault();
+        iframe.setAttribute('src', videoSrc);
+        modal.classList.add('is-open');
+    }
+
+    function closeModal() {
+        modal.classList.remove('is-open');
+        iframe.setAttribute('src', '');
+    }
+
+    trigger.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', function (event) {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+            closeModal();
+        }
+    });
+})();
+</script>
 {% endblock %}
