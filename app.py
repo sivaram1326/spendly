@@ -1,8 +1,14 @@
-from flask import Flask, render_template
+import os
+import re
+import sqlite3
 
-from database.db import get_db, init_db, seed_db
+from flask import Flask, redirect, render_template, request, session, url_for
+from werkzeug.security import generate_password_hash
+
+from database.db import create_user, get_db, init_db, seed_db
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
 
 with app.app_context():
     init_db()
@@ -18,9 +24,29 @@ def landing():
     return render_template("landing.html")
 
 
-@app.route("/register")
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    return render_template("register.html")
+    if request.method == "GET":
+        return render_template("register.html")
+
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+
+    if not name:
+        return render_template("register.html", error="Full name is required.")
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        return render_template("register.html", error="Enter a valid email address.")
+    if len(password) < 8:
+        return render_template("register.html", error="Password must be at least 8 characters.")
+
+    try:
+        user_id = create_user(name, email, generate_password_hash(password))
+    except sqlite3.IntegrityError:
+        return render_template("register.html", error="Email already registered.")
+
+    session["user_id"] = user_id
+    return redirect(url_for("landing"))
 
 
 @app.route("/login")
