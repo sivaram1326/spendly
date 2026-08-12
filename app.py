@@ -6,6 +6,12 @@ from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
+from database.queries import (
+    get_category_breakdown,
+    get_recent_transactions,
+    get_summary_stats,
+    get_user_by_id,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
@@ -91,35 +97,42 @@ def privacy():
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
 
+def _fmt_inr(amount):
+    """Format a numeric amount as an Indian Rupee currency string."""
+    return f"₹{amount:,.2f}"
+
+
 @app.route("/profile")
 def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
+    user_id = session["user_id"]
+
+    user_row = get_user_by_id(user_id)
     user = {
-        "name": "Demo User",
-        "initials": "DU",
-        "email": "demo@spendly.com",
-        "member_since": "August 2026",
+        "name": user_row["name"],
+        "email": user_row["email"],
+        "member_since": user_row["member_since"],
+        "initials": "".join(p[0].upper() for p in user_row["name"].split()[:2]),
     }
+
+    raw_stats = get_summary_stats(user_id)
     stats = {
-        "total_spent": "₹423.64",
-        "transaction_count": 8,
-        "top_category": "Food",
+        "total_spent": _fmt_inr(raw_stats["total_spent"]),
+        "transaction_count": raw_stats["transaction_count"],
+        "top_category": raw_stats["top_category"],
     }
+
+    raw_transactions = get_recent_transactions(user_id)
     transactions = [
-        {"date": "Aug 2, 2026", "description": "Lunch with coworkers", "category": "Food", "amount": "₹12.50"},
-        {"date": "Aug 4, 2026", "description": "Monthly train pass top-up", "category": "Transport", "amount": "₹45.00"},
-        {"date": "Aug 5, 2026", "description": "Electricity bill", "category": "Bills", "amount": "₹89.99"},
-        {"date": "Aug 7, 2026", "description": "Dentist visit", "category": "Health", "amount": "₹150.00"},
-        {"date": "Aug 9, 2026", "description": "Movie tickets", "category": "Entertainment", "amount": "₹25.00"},
+        {**tx, "amount": _fmt_inr(tx["amount"])} for tx in raw_transactions
     ]
+
+    raw_breakdown = get_category_breakdown(user_id)
     category_breakdown = [
-        {"category": "Food", "amount": "₹144.90", "percent": 72},
-        {"category": "Transport", "amount": "₹45.00", "percent": 22},
-        {"category": "Bills", "amount": "₹89.99", "percent": 45},
-        {"category": "Health", "amount": "₹150.00", "percent": 75},
-        {"category": "Entertainment", "amount": "₹25.00", "percent": 12},
+        {"category": row["name"], "amount": _fmt_inr(row["amount"]), "percent": row["pct"]}
+        for row in raw_breakdown
     ]
 
     return render_template(
