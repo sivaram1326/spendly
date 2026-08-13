@@ -1,6 +1,7 @@
 import os
 import re
 import sqlite3
+from datetime import date, datetime, timedelta
 
 from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -102,12 +103,67 @@ def _fmt_inr(amount):
     return f"₹{amount:,.2f}"
 
 
+_VALID_RANGES = {"all", "this_month", "last_30", "last_90", "custom"}
+
+
+def _compute_date_range(range_param, start_date_param, end_date_param):
+    """(start_date, end_date, error) as ISO strings, or (None, None, err) for all-time."""
+    today = date.today()
+
+    if range_param == "this_month":
+        return today.replace(day=1).isoformat(), today.isoformat(), None
+    if range_param == "last_30":
+        return (today - timedelta(days=29)).isoformat(), today.isoformat(), None
+    if range_param == "last_90":
+        return (today - timedelta(days=89)).isoformat(), today.isoformat(), None
+
+    if range_param == "custom":
+        if not start_date_param or not end_date_param:
+            return None, None, "Please provide both a start and end date for a custom range."
+        try:
+            start_dt = datetime.strptime(start_date_param, "%Y-%m-%d").date()
+            end_dt = datetime.strptime(end_date_param, "%Y-%m-%d").date()
+        except ValueError:
+            return None, None, "Invalid date format — please use the date picker."
+        if start_dt > end_dt:
+            return None, None, "Start date must be on or before the end date."
+        return start_dt.isoformat(), end_dt.isoformat(), None
+
+    return None, None, None  # "all" or unrecognized -> all-time, no error
+
+
+def _resolve_filter_params():
+    """Read range/start_date/end_date from the query string and resolve the
+    effective (start_date, end_date, error, selected_range, is_filtered) state."""
+    range_param = request.args.get("range", "all")
+    start_date_param = request.args.get("start_date", "")
+    end_date_param = request.args.get("end_date", "")
+
+    start_date, end_date, filter_error = _compute_date_range(
+        range_param, start_date_param, end_date_param
+    )
+    selected_range = range_param if range_param in _VALID_RANGES else "all"
+
+    return {
+        "start_date": start_date,
+        "end_date": end_date,
+        "filter_error": filter_error,
+        "selected_range": selected_range,
+        "start_date_value": start_date_param if range_param == "custom" else "",
+        "end_date_value": end_date_param if range_param == "custom" else "",
+        "is_filtered": start_date is not None,
+    }
+
+
 @app.route("/profile")
 def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
     user_id = session["user_id"]
+    filter_state = _resolve_filter_params()
+    start_date = filter_state["start_date"]
+    end_date = filter_state["end_date"]
 
     user_row = get_user_by_id(user_id)
     user = {
@@ -117,19 +173,19 @@ def profile():
         "initials": "".join(p[0].upper() for p in user_row["name"].split()[:2]),
     }
 
-    raw_stats = get_summary_stats(user_id)
+    raw_stats = get_summary_stats(user_id, start_date=start_date, end_date=end_date)
     stats = {
         "total_spent": _fmt_inr(raw_stats["total_spent"]),
         "transaction_count": raw_stats["transaction_count"],
         "top_category": raw_stats["top_category"],
     }
 
-    raw_transactions = get_recent_transactions(user_id)
+    raw_transactions = get_recent_transactions(user_id, start_date=start_date, end_date=end_date)
     transactions = [
         {**tx, "amount": _fmt_inr(tx["amount"])} for tx in raw_transactions
     ]
 
-    raw_breakdown = get_category_breakdown(user_id)
+    raw_breakdown = get_category_breakdown(user_id, start_date=start_date, end_date=end_date)
     category_breakdown = [
         {"category": row["name"], "amount": _fmt_inr(row["amount"]), "percent": row["pct"]}
         for row in raw_breakdown
@@ -141,6 +197,11 @@ def profile():
         stats=stats,
         transactions=transactions,
         category_breakdown=category_breakdown,
+        selected_range=filter_state["selected_range"],
+        start_date_value=filter_state["start_date_value"],
+        end_date_value=filter_state["end_date_value"],
+        filter_error=filter_state["filter_error"],
+        is_filtered=filter_state["is_filtered"],
     )
 
 
