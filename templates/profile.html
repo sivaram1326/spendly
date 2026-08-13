@@ -31,6 +31,36 @@
             </div>
         </div>
 
+        <div class="profile-filter-card">
+            <form method="GET" action="{{ url_for('profile') }}" class="profile-filter-form">
+                <div class="filter-field">
+                    <label for="range">Date range</label>
+                    <select id="range" name="range" class="form-input">
+                        <option value="all" {% if selected_range == "all" %}selected{% endif %}>All Time</option>
+                        <option value="this_month" {% if selected_range == "this_month" %}selected{% endif %}>This Month</option>
+                        <option value="last_30" {% if selected_range == "last_30" %}selected{% endif %}>Last 30 Days</option>
+                        <option value="last_90" {% if selected_range == "last_90" %}selected{% endif %}>Last 90 Days</option>
+                        <option value="custom" {% if selected_range == "custom" %}selected{% endif %}>Custom Range</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label for="start_date">Start date</label>
+                    <input type="date" id="start_date" name="start_date" class="form-input" value="{{ start_date_value }}">
+                </div>
+                <div class="filter-field">
+                    <label for="end_date">End date</label>
+                    <input type="date" id="end_date" name="end_date" class="form-input" value="{{ end_date_value }}">
+                </div>
+                <button type="submit" class="btn-submit filter-submit">Apply</button>
+                {% if is_filtered %}
+                <a href="{{ url_for('profile') }}" class="filter-clear-link">Clear filter · All time</a>
+                {% endif %}
+            </form>
+            {% if filter_error %}
+            <p class="filter-error">{{ filter_error }}</p>
+            {% endif %}
+        </div>
+
         <div class="profile-block">
             <h2 class="legal-title">Recent Transactions</h2>
             <div class="profile-table-card">
