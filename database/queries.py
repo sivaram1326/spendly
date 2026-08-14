@@ -1,4 +1,4 @@
-"""Pure DB query helpers for the profile page. No Flask imports here."""
+"""Pure DB query helpers for expenses and the profile page. No Flask imports here."""
 from datetime import datetime
 
 from database.db import get_db
@@ -10,6 +10,21 @@ def _date_filter_clause(start_date, end_date):
     if start_date is not None and end_date is not None:
         return " AND date BETWEEN ? AND ?", (start_date, end_date)
     return "", ()
+
+
+def insert_expense(user_id, amount, category, expense_date, description):
+    """Insert a new expense row. Returns the new row's id."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, category, expense_date, description),
+        )
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
 
 
 def get_user_by_id(user_id):
