@@ -6,12 +6,13 @@ from datetime import date, datetime, timedelta
 from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
+from database.db import CATEGORIES, create_user, get_db, get_user_by_email, init_db, seed_db
 from database.queries import (
     get_category_breakdown,
     get_recent_transactions,
     get_summary_stats,
     get_user_by_id,
+    insert_expense,
 )
 
 app = Flask(__name__)
@@ -212,9 +213,65 @@ def profile():
     )
 
 
-@app.route("/expenses/add")
+def _render_add_expense_form(error=None, values=None):
+    return render_template(
+        "add_expense.html",
+        categories=CATEGORIES,
+        today=date.today().isoformat(),
+        error=error,
+        values=values,
+    )
+
+
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    if request.method == "GET":
+        return _render_add_expense_form()
+
+    amount_raw = request.form.get("amount", "").strip()
+    category = request.form.get("category", "").strip()
+    date_raw = request.form.get("date", "").strip()
+    description_raw = request.form.get("description", "").strip()
+
+    form_values = {
+        "amount": amount_raw,
+        "category": category,
+        "date": date_raw,
+        "description": description_raw,
+    }
+
+    try:
+        amount = float(amount_raw)
+        if amount <= 0:
+            raise ValueError
+    except ValueError:
+        return _render_add_expense_form(
+            error="Enter a valid amount greater than 0.", values=form_values
+        )
+
+    if category not in CATEGORIES:
+        return _render_add_expense_form(
+            error="Select a valid category.", values=form_values
+        )
+
+    try:
+        datetime.strptime(date_raw, "%Y-%m-%d")
+    except ValueError:
+        return _render_add_expense_form(
+            error="Enter a valid date.", values=form_values
+        )
+
+    if len(description_raw) > 200:
+        return _render_add_expense_form(
+            error="Description must be 200 characters or fewer.", values=form_values
+        )
+
+    description = description_raw if description_raw else None
+    insert_expense(session["user_id"], amount, category, date_raw, description)
+    return redirect(url_for("profile"))
 
 
 @app.route("/expenses/<int:id>/edit")
