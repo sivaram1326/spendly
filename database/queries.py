@@ -27,6 +27,34 @@ def insert_expense(user_id, amount, category, expense_date, description):
         conn.close()
 
 
+def get_expense_by_id(expense_id, user_id):
+    """Return a single expense row if it belongs to user_id, else None."""
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id, amount, category, date, description FROM expenses "
+            "WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        ).fetchone()
+    finally:
+        conn.close()
+    return row
+
+
+def update_expense(expense_id, user_id, amount, category, expense_date, description):
+    """Update an expense row, scoped to id AND user_id. No-ops if not owned."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE expenses SET amount = ?, category = ?, date = ?, description = ? "
+            "WHERE id = ? AND user_id = ?",
+            (amount, category, expense_date, description, expense_id, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_user_by_id(user_id):
     """Return dict with name, email, member_since (or None if not found)."""
     conn = get_db()
@@ -54,7 +82,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
     conn = get_db()
     try:
         rows = conn.execute(
-            "SELECT date, description, category, amount FROM expenses "
+            "SELECT id, date, description, category, amount FROM expenses "
             "WHERE user_id = ?" + date_sql + " ORDER BY date DESC, id DESC LIMIT ?",
             (user_id, *date_params, limit),
         ).fetchall()
@@ -65,6 +93,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
     for row in rows:
         d = datetime.strptime(row["date"], "%Y-%m-%d")
         transactions.append({
+            "id": row["id"],
             "date": f"{d.strftime('%b')} {d.day}, {d.year}",
             "description": row["description"],
             "category": row["category"],
