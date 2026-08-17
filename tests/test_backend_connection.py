@@ -30,7 +30,7 @@ def test_get_recent_transactions_seed_user(seeded_user_id):
     assert [tx["description"] for tx in result] == expected_descriptions
     assert len(result) == len(expected_descriptions)
     for tx in result:
-        assert set(tx.keys()) == {"date", "description", "category", "amount"}
+        assert set(tx.keys()) == {"id", "date", "description", "category", "amount"}
 
 
 def test_get_recent_transactions_new_user(new_user_id):

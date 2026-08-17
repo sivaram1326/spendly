@@ -817,6 +817,8 @@ select.form-input {
     color: var(--ink-muted);
 }
 
+.profile-table th:nth-last-child(2),
+.profile-table td:nth-last-child(2),
 .profile-table th:last-child,
 .profile-table td:last-child {
     text-align: right;
