@@ -55,6 +55,19 @@ def update_expense(expense_id, user_id, amount, category, expense_date, descript
         conn.close()
 
 
+def delete_expense(expense_id, user_id):
+    """Delete an expense row, scoped to id AND user_id. No-ops if not owned."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_user_by_id(user_id):
     """Return dict with name, email, member_since (or None if not found)."""
     conn = get_db()

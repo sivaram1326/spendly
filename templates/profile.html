@@ -82,7 +82,12 @@
                             <td>{{ tx.description }}</td>
                             <td><span class="category-badge category-badge-{{ tx.category|lower }}">{{ tx.category }}</span></td>
                             <td>{{ tx.amount }}</td>
-                            <td><a href="{{ url_for('edit_expense', id=tx.id) }}" class="filter-clear-link">Edit</a></td>
+                            <td>
+                                <a href="{{ url_for('edit_expense', id=tx.id) }}" class="filter-clear-link">Edit</a>
+                                <form method="POST" action="{{ url_for('delete_expense', id=tx.id) }}" onsubmit="return confirm('Delete this expense?')" class="inline-delete-form">
+                                    <button type="submit" class="filter-clear-link">Delete</button>
+                                </form>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -778,6 +778,21 @@ select.form-input {
 
 .filter-clear-link:hover { text-decoration: underline; }
 
+.inline-delete-form {
+    display: inline;
+}
+
+.inline-delete-form button.filter-clear-link {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 0.75rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
 .filter-error {
     background: var(--danger-light);
     color: var(--danger);
